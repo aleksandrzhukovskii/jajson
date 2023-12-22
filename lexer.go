@@ -13,6 +13,10 @@ type lexer struct {
 	data    []byte
 	pos     int
 	bytePos int
+
+	lookupLexem  lexem
+	lookupBefore []byte
+	lookupError  error
 }
 
 func newLexer(data []byte) *lexer {
@@ -23,13 +27,26 @@ func newLexer(data []byte) *lexer {
 	}
 }
 
-func (t *lexer) nextToken() (lexem, error) {
+func (t *lexer) lookup() (lexem, []byte, error) {
+	if t.lookupBefore != nil {
+		return t.lookupLexem, t.lookupBefore, t.lookupError
+	}
+	t.lookupLexem, t.lookupBefore, t.lookupError = t.nextToken()
+	return t.lookupLexem, t.lookupBefore, t.lookupError
+}
+
+func (t *lexer) nextToken() (lexem, []byte, error) {
+	if t.lookupBefore != nil {
+		r1, r2, r3 := t.lookupLexem, t.lookupBefore, t.lookupError
+		t.lookupLexem, t.lookupBefore, t.lookupError = lexem{}, nil, nil
+		return r1, r2, r3
+	}
 	if len(t.data) == 0 {
-		return lexem{}, ErrorUnexpected.New(t.pos)
+		return lexem{}, nil, ErrorUnexpected.New(t.pos)
 	}
 	r, size := utf8.DecodeRune(t.data)
 	if r == utf8.RuneError {
-		return lexem{}, ErrorRune.New(t.pos)
+		return lexem{}, nil, ErrorRune.New(t.pos)
 	}
 	before := t.data
 	t.data = t.data[size:]
@@ -38,7 +55,7 @@ func (t *lexer) nextToken() (lexem, error) {
 		t.bytePos += size
 		r, size = utf8.DecodeRune(t.data)
 		if r == utf8.RuneError {
-			return lexem{}, ErrorRune.New(t.pos)
+			return lexem{}, nil, ErrorRune.New(t.pos)
 		}
 		before = t.data
 		t.data = t.data[size:]
@@ -47,25 +64,25 @@ func (t *lexer) nextToken() (lexem, error) {
 	switch r {
 	case '{', '}', '[', ']', ':', ',':
 		defer func() { t.pos++; t.bytePos += size }()
-		return lexem{typ: runeToType[r], pos: t.pos, bytePos: t.bytePos}, nil
+		return lexem{typ: runeToType[r], pos: t.pos, bytePos: t.bytePos}, before, nil
 	case 't':
 		if err := t.skip(rue); err != nil {
-			return lexem{}, err
+			return lexem{}, nil, err
 		}
 		byteLen := len(before) - len(t.data)
 		defer func() { t.pos += 4; t.bytePos += byteLen }()
-		return lexem{typ: Bool, pos: t.pos, value: before[:byteLen], bytePos: t.bytePos}, nil
+		return lexem{typ: Bool, pos: t.pos, value: before[:byteLen], bytePos: t.bytePos}, before, nil
 	case 'f':
 		if err := t.skip(alse); err != nil {
-			return lexem{}, err
+			return lexem{}, nil, err
 		}
 		byteLen := len(before) - len(t.data)
 		defer func() { t.pos += 5; t.bytePos += byteLen }()
-		return lexem{typ: Bool, pos: t.pos, value: before[:byteLen], bytePos: t.bytePos}, nil
+		return lexem{typ: Bool, pos: t.pos, value: before[:byteLen], bytePos: t.bytePos}, before, nil
 	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		ret, float, err := t.skipNum(r == '-')
 		if err != nil {
-			return lexem{}, err
+			return lexem{}, nil, err
 		}
 		byteLen := len(before) - len(t.data)
 		defer func() { t.pos += ret + 1; t.bytePos += byteLen }()
@@ -75,17 +92,17 @@ func (t *lexer) nextToken() (lexem, error) {
 		} else {
 			typ = Int
 		}
-		return lexem{typ: typ, pos: t.pos, value: before[:byteLen], bytePos: t.bytePos}, nil
+		return lexem{typ: typ, pos: t.pos, value: before[:byteLen], bytePos: t.bytePos}, before, nil
 	case '"':
 		ret, err := t.skipString()
 		if err != nil {
-			return lexem{}, err
+			return lexem{}, nil, err
 		}
 		byteLen := len(before) - len(t.data)
 		defer func() { t.pos += ret + 2; t.bytePos += byteLen }()
-		return lexem{typ: String, pos: t.pos, value: before[:byteLen], bytePos: t.bytePos}, nil
+		return lexem{typ: String, pos: t.pos, value: before[:byteLen], bytePos: t.bytePos}, before, nil
 	default:
-		return lexem{}, ErrorUnexpected.New(t.pos)
+		return lexem{}, nil, ErrorUnexpected.New(t.pos)
 	}
 }
 
@@ -128,7 +145,7 @@ func (t *lexer) skipNum(zeroCritical bool) (int, bool, error) {
 				return ret, float, nil
 			}
 		}
-		if r != '.' && r != ',' && !(r >= '0' && r <= '9') {
+		if r != '.' && !(r >= '0' && r <= '9') {
 			if point {
 				return 0, false, ErrorUnexpected.New(t.pos)
 			}
@@ -139,7 +156,7 @@ func (t *lexer) skipNum(zeroCritical bool) (int, bool, error) {
 			}
 		}
 		point = false
-		if r == '.' || r == ',' {
+		if r == '.' {
 			point = true
 			if float {
 				return 0, false, ErrorUnexpected.New(t.pos)

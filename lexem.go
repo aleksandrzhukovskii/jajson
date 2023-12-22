@@ -16,6 +16,7 @@ const (
 
 	Object
 	Array
+	Err
 )
 
 type lexem struct {

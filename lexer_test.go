@@ -15,7 +15,7 @@ func TestLexer(t *testing.T) {
 }
 
 func (t *LexerSuite) TestNextTokenOK() {
-	testCase := `   [  {  ]  }  true  false 123 12 1 -123 -12 -1 123.5 -123,56  :  "abd" "☺" "\xFF" "\377" "\u1234" "\U00010111" "\U0001011111" "\a\b\f\n\r\t\v\\\"" "\a"  ,  `
+	testCase := `   [  {  ]  }  true  false 123 12 1 -123 -12 -1 123.5 -123.56  :  "abd" "☺" "\xFF" "\377" "\u1234" "\U00010111" "\U0001011111" "\a\b\f\n\r\t\v\\\"" "\a"  ,  `
 	l := newLexer([]byte(testCase))
 	check := []struct {
 		pos     int
@@ -50,7 +50,7 @@ func (t *LexerSuite) TestNextTokenOK() {
 		{pos: 154, bytePos: 156, typ: comma},
 	}
 	for i := 0; i < len(check); i++ {
-		lex, err := l.nextToken()
+		lex, _, err := l.nextToken()
 		t.NoError(err)
 		t.Equal(check[i].typ, lex.typ)
 		t.Equal(check[i].pos, lex.pos)
@@ -63,7 +63,7 @@ func (t *LexerSuite) TestNextTokenOK() {
 			t.Equal(check[i].bytePos, lex.bytePos)
 		}
 	}
-	lex, err := l.nextToken()
+	lex, _, err := l.nextToken()
 	t.Equal(lexem{}, lex)
 	t.EqualError(err, ErrorUnexpected.New(len([]rune(testCase))-1).Error())
 }
