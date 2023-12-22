@@ -1,9 +1,9 @@
 package jajson
 
-type LexemType uint8
+type LexemeType uint8
 
 const (
-	openCurve LexemType = iota
+	openCurve LexemeType = iota
 	closeCurve
 	openBracket
 	closeBracket
@@ -19,8 +19,8 @@ const (
 	Err
 )
 
-type lexem struct {
-	typ     LexemType
+type lexeme struct {
+	typ     LexemeType
 	value   []byte
 	pos     int
 	bytePos int

@@ -17,7 +17,7 @@ func TestParser(t *testing.T) {
 func (t *ParserSuite) TestParseValues() {
 	tests := []struct {
 		data          []byte
-		expectedType  jajson.LexemType
+		expectedType  jajson.LexemeType
 		expectedValue []byte
 	}{
 		{
@@ -82,7 +82,7 @@ func (t *ParserSuite) TestParseValues() {
 	}
 }
 
-func (t *ParserSuite) TestParseInts() {
+func (t *ParserSuite) TestParseInt() {
 	str := []byte("123")
 	{
 		val, err := jajson.GetInt[int](str)
@@ -145,7 +145,7 @@ func (t *ParserSuite) TestParseInts() {
 	}
 }
 
-func (t *ParserSuite) TestParseFloats() {
+func (t *ParserSuite) TestParseFloat() {
 	str := []byte("123.123")
 	{
 		val, err := jajson.GetFloat[float32](str)
@@ -155,31 +155,81 @@ func (t *ParserSuite) TestParseFloats() {
 	{
 		val, err := jajson.GetFloat[float64](str)
 		t.NoError(err)
-		t.Equal(float64(123.123), val)
+		t.Equal(123.123, val)
 	}
 }
 
 func (t *ParserSuite) TestParseBool() {
 	str := []byte("true")
-	{
-		val, err := jajson.GetBool(str)
-		t.NoError(err)
-		t.Equal(true, val)
-	}
+	val, err := jajson.GetBool(str)
+	t.NoError(err)
+	t.Equal(true, val)
 
 	str2 := []byte("false")
-	{
-		val, err := jajson.GetBool(str2)
-		t.NoError(err)
-		t.Equal(false, val)
-	}
+	val, err = jajson.GetBool(str2)
+	t.NoError(err)
+	t.Equal(false, val)
 }
 
 func (t *ParserSuite) TestParseString() {
 	str := []byte(`   "hello world"    `)
-	{
-		val, err := jajson.GetString(str)
-		t.NoError(err)
-		t.Equal("hello world", val)
-	}
+	val, err := jajson.GetString(str)
+	t.NoError(err)
+	t.Equal("hello world", val)
+}
+
+func (t *ParserSuite) TestSkipPath() {
+	str := []byte(`{
+  "vote": "ball",
+  "old": {
+    "want": {
+      "property": "inside",
+      "effort": "attention",
+      "wet": 1109645483.6983008,
+      "writing": -948472356,
+      "surprise": true,
+      "program": 1695978583
+    },
+    "stay": "dropped",
+    "member": "pride",
+    "sea": {
+      "when": {
+        "since": {
+          "plane": false,
+          "sign": {
+            "light": 834769761.4018192,
+            "milk": true,
+            "slip": -336161524.5422106,
+            "again": "smallest",
+            "pool": true,
+            "pine": true
+          },
+          "skin": true,
+          "worse": "began",
+          "research": "related",
+          "grown": -1605210312
+        },
+        "concerned": "ear",
+        "widely": -554551530.7177119,
+        "wonderful": "hat",
+        "equally": -1520472446.9296641,
+        "sink": false
+      },
+      "base": "shout",
+      "research": 1808535055,
+      "exchange": 2065845667.9527268,
+      "rear": "top",
+      "between": false
+    },
+    "drawn": 391412319.3263068,
+    "knowledge": 1392486092.9973145
+  },
+  "subject": 1800889929,
+  "distance": true,
+  "strength": "route",
+  "pitch": 245089294.51815557
+}`)
+	val, err := jajson.GetBool(str, "old", "sea", "when", "since", "sign", "pool")
+	t.NoError(err)
+	t.True(val)
 }

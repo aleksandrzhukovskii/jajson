@@ -7,14 +7,14 @@ import (
 
 var rue = []rune("rue")
 var alse = []rune("alse")
-var runeToType = map[rune]LexemType{'{': openCurve, '}': closeCurve, '[': openBracket, ']': closeBracket, ':': colon, ',': comma}
+var runeToType = map[rune]LexemeType{'{': openCurve, '}': closeCurve, '[': openBracket, ']': closeBracket, ':': colon, ',': comma}
 
 type lexer struct {
 	data    []byte
 	pos     int
 	bytePos int
 
-	lookupLexem  lexem
+	lookupLexeme lexeme
 	lookupBefore []byte
 	lookupError  error
 }
@@ -27,26 +27,26 @@ func newLexer(data []byte) *lexer {
 	}
 }
 
-func (t *lexer) lookup() (lexem, []byte, error) {
+func (t *lexer) lookup() (lexeme, []byte, error) {
 	if t.lookupBefore != nil {
-		return t.lookupLexem, t.lookupBefore, t.lookupError
+		return t.lookupLexeme, t.lookupBefore, t.lookupError
 	}
-	t.lookupLexem, t.lookupBefore, t.lookupError = t.nextToken()
-	return t.lookupLexem, t.lookupBefore, t.lookupError
+	t.lookupLexeme, t.lookupBefore, t.lookupError = t.nextToken()
+	return t.lookupLexeme, t.lookupBefore, t.lookupError
 }
 
-func (t *lexer) nextToken() (lexem, []byte, error) {
+func (t *lexer) nextToken() (lexeme, []byte, error) {
 	if t.lookupBefore != nil {
-		r1, r2, r3 := t.lookupLexem, t.lookupBefore, t.lookupError
-		t.lookupLexem, t.lookupBefore, t.lookupError = lexem{}, nil, nil
+		r1, r2, r3 := t.lookupLexeme, t.lookupBefore, t.lookupError
+		t.lookupLexeme, t.lookupBefore, t.lookupError = lexeme{}, nil, nil
 		return r1, r2, r3
 	}
 	if len(t.data) == 0 {
-		return lexem{}, nil, ErrorUnexpected.New(t.pos)
+		return lexeme{}, nil, ErrorUnexpected.New(t.pos)
 	}
 	r, size := utf8.DecodeRune(t.data)
 	if r == utf8.RuneError {
-		return lexem{}, nil, ErrorRune.New(t.pos)
+		return lexeme{}, nil, ErrorRune.New(t.pos)
 	}
 	before := t.data
 	t.data = t.data[size:]
@@ -55,7 +55,7 @@ func (t *lexer) nextToken() (lexem, []byte, error) {
 		t.bytePos += size
 		r, size = utf8.DecodeRune(t.data)
 		if r == utf8.RuneError {
-			return lexem{}, nil, ErrorRune.New(t.pos)
+			return lexeme{}, nil, ErrorRune.New(t.pos)
 		}
 		before = t.data
 		t.data = t.data[size:]
@@ -64,45 +64,45 @@ func (t *lexer) nextToken() (lexem, []byte, error) {
 	switch r {
 	case '{', '}', '[', ']', ':', ',':
 		defer func() { t.pos++; t.bytePos += size }()
-		return lexem{typ: runeToType[r], pos: t.pos, bytePos: t.bytePos}, before, nil
+		return lexeme{typ: runeToType[r], pos: t.pos, bytePos: t.bytePos}, before, nil
 	case 't':
 		if err := t.skip(rue); err != nil {
-			return lexem{}, nil, err
+			return lexeme{}, nil, err
 		}
 		byteLen := len(before) - len(t.data)
 		defer func() { t.pos += 4; t.bytePos += byteLen }()
-		return lexem{typ: Bool, pos: t.pos, value: before[:byteLen], bytePos: t.bytePos}, before, nil
+		return lexeme{typ: Bool, pos: t.pos, value: before[:byteLen], bytePos: t.bytePos}, before, nil
 	case 'f':
 		if err := t.skip(alse); err != nil {
-			return lexem{}, nil, err
+			return lexeme{}, nil, err
 		}
 		byteLen := len(before) - len(t.data)
 		defer func() { t.pos += 5; t.bytePos += byteLen }()
-		return lexem{typ: Bool, pos: t.pos, value: before[:byteLen], bytePos: t.bytePos}, before, nil
+		return lexeme{typ: Bool, pos: t.pos, value: before[:byteLen], bytePos: t.bytePos}, before, nil
 	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		ret, float, err := t.skipNum(r == '-')
 		if err != nil {
-			return lexem{}, nil, err
+			return lexeme{}, nil, err
 		}
 		byteLen := len(before) - len(t.data)
 		defer func() { t.pos += ret + 1; t.bytePos += byteLen }()
-		var typ LexemType
+		var typ LexemeType
 		if float {
 			typ = Float
 		} else {
 			typ = Int
 		}
-		return lexem{typ: typ, pos: t.pos, value: before[:byteLen], bytePos: t.bytePos}, before, nil
+		return lexeme{typ: typ, pos: t.pos, value: before[:byteLen], bytePos: t.bytePos}, before, nil
 	case '"':
 		ret, err := t.skipString()
 		if err != nil {
-			return lexem{}, nil, err
+			return lexeme{}, nil, err
 		}
 		byteLen := len(before) - len(t.data)
 		defer func() { t.pos += ret + 2; t.bytePos += byteLen }()
-		return lexem{typ: String, pos: t.pos, value: before[:byteLen], bytePos: t.bytePos}, before, nil
+		return lexeme{typ: String, pos: t.pos, value: before[:byteLen], bytePos: t.bytePos}, before, nil
 	default:
-		return lexem{}, nil, ErrorUnexpected.New(t.pos)
+		return lexeme{}, nil, ErrorUnexpected.New(t.pos)
 	}
 }
 

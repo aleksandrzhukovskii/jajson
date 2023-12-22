@@ -23,5 +23,6 @@ var ErrorUnexpected = Error{err: errors.New("unexpected symbol or end of JSON")}
 var ErrorRune = Error{err: errors.New("cannot parse next rune")}
 var ErrorWrongQuote = Error{err: errors.New("wrong quotation")}
 var ErrorEmptyJSON = Error{err: errors.New("JSON is empty")}
-var ErrorUnexpectedLexem = Error{err: errors.New("unexpected lexem while parsing JSON")}
+var ErrorUnexpectedLexeme = Error{err: errors.New("unexpected lexeme while parsing JSON")}
 var ErrorWrongValueType = Error{err: errors.New("wrong type of value")}
+var ErrorWrongPath = Error{err: errors.New("path not found")}

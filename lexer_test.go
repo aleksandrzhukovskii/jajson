@@ -20,7 +20,7 @@ func (t *LexerSuite) TestNextTokenOK() {
 	check := []struct {
 		pos     int
 		bytePos int
-		typ     LexemType
+		typ     LexemeType
 		value   []byte
 	}{
 		{pos: 3, bytePos: 3, typ: openBracket},
@@ -64,6 +64,6 @@ func (t *LexerSuite) TestNextTokenOK() {
 		}
 	}
 	lex, _, err := l.nextToken()
-	t.Equal(lexem{}, lex)
+	t.Equal(lexeme{}, lex)
 	t.EqualError(err, ErrorUnexpected.New(len([]rune(testCase))-1).Error())
 }
