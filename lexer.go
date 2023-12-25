@@ -60,20 +60,23 @@ func (t *lexer) nextToken() (lexeme, []byte, error) {
 		before = t.data
 		t.data = t.data[size:]
 	}
+	return t.tokenSwitch(r, before, size)
+}
 
+func (t *lexer) tokenSwitch(r rune, before []byte, size int) (lexeme, []byte, error) {
 	switch r {
 	case '{', '}', '[', ']', ':', ',':
 		defer func() { t.pos++; t.bytePos += size }()
 		return lexeme{typ: runeToType[r], pos: t.pos, bytePos: t.bytePos}, before, nil
 	case 't':
-		if err := t.skip(rue); err != nil {
+		if err := t.skipRunes(rue); err != nil {
 			return lexeme{}, nil, err
 		}
 		byteLen := len(before) - len(t.data)
 		defer func() { t.pos += 4; t.bytePos += byteLen }()
 		return lexeme{typ: Bool, pos: t.pos, value: before[:byteLen], bytePos: t.bytePos}, before, nil
 	case 'f':
-		if err := t.skip(alse); err != nil {
+		if err := t.skipRunes(alse); err != nil {
 			return lexeme{}, nil, err
 		}
 		byteLen := len(before) - len(t.data)
@@ -106,7 +109,7 @@ func (t *lexer) nextToken() (lexeme, []byte, error) {
 	}
 }
 
-func (t *lexer) skip(str []rune) error {
+func (t *lexer) skipRunes(str []rune) error {
 	for i := 0; i < len(str); i++ {
 		if len(t.data) == 0 {
 			return ErrorUnexpected.New(t.pos)
@@ -131,42 +134,49 @@ func (t *lexer) skipNum(zeroCritical bool) (int, bool, error) {
 		if len(t.data) == 0 {
 			if ret == 0 && zeroCritical {
 				return 0, false, ErrorUnexpected.New(t.pos)
-			} else {
-				return ret, float, nil
 			}
+			return ret, float, nil
 		}
-		r, size := utf8.DecodeRune(t.data)
+
+		size, r, err := t.skipNumDecodeRune(zeroCritical, point, ret)
 		if r == utf8.RuneError {
-			if ret == 0 && zeroCritical {
-				return 0, false, ErrorRune.New(t.pos)
-			} else if point {
-				return 0, false, ErrorUnexpected.New(t.pos)
-			} else {
+			if err == nil {
 				return ret, float, nil
 			}
-		}
-		if r != '.' && !(r >= '0' && r <= '9') {
-			if point {
-				return 0, false, ErrorUnexpected.New(t.pos)
-			}
-			if ret == 0 && zeroCritical {
-				return 0, false, ErrorUnexpected.New(t.pos)
-			} else {
-				return ret, float, nil
-			}
+			return 0, false, err
 		}
 		point = false
 		if r == '.' {
 			point = true
 			if float {
 				return 0, false, ErrorUnexpected.New(t.pos)
-			} else {
-				float = true
 			}
+			float = true
 		}
 		t.data = t.data[size:]
 		ret++
 	}
+}
+
+func (t *lexer) skipNumDecodeRune(zeroCritical, point bool, ret int) (int, rune, error) {
+	r, size := utf8.DecodeRune(t.data)
+	if r == utf8.RuneError {
+		if ret == 0 && zeroCritical {
+			return 0, utf8.RuneError, ErrorRune.New(t.pos)
+		} else if point {
+			return 0, utf8.RuneError, ErrorUnexpected.New(t.pos)
+		}
+		return 0, utf8.RuneError, nil
+	}
+	if r != '.' && !(r >= '0' && r <= '9') {
+		if point {
+			return 0, utf8.RuneError, ErrorUnexpected.New(t.pos)
+		} else if ret == 0 && zeroCritical {
+			return 0, utf8.RuneError, ErrorUnexpected.New(t.pos)
+		}
+		return 0, utf8.RuneError, nil
+	}
+	return size, r, nil
 }
 
 func (t *lexer) skipString() (int, error) {
@@ -214,49 +224,14 @@ func (t *lexer) skipChar() (int, error) {
 	case 'a', 'b', 'f', 'n', 'r', 't', 'v', '\\', '"':
 		return 2, nil
 	case 'x', 'u', 'U':
-		n := 0
-		switch c {
-		case 'x':
-			n = 2
-		case 'u':
-			n = 4
-		case 'U':
-			n = 8
+		n, err := t.skipNumHex(c)
+		if err != nil {
+			return 0, err
 		}
-		var v rune
-		if len(t.data) < n {
-			return 0, ErrorUnexpected.New(t.pos)
-		}
-		for j := 0; j < n; j++ {
-			x, ok := t.unhex(t.data[j])
-			if !ok {
-				return 0, ErrorUnexpected.New(t.pos)
-			}
-			v = v<<4 | x
-		}
-		t.data = t.data[n:]
-		if c == 'x' {
-			return 2 + n, nil
-		}
-		if !utf8.ValidRune(v) {
-			return 0, ErrorRune.New(t.pos)
-		}
-		return 2 + n, nil
+		return n, nil
 	case '0', '1', '2', '3', '4', '5', '6', '7':
-		v := rune(c) - '0'
-		if len(t.data) < 2 {
-			return 0, ErrorUnexpected.New(t.pos)
-		}
-		for j := 0; j < 2; j++ { // one digit already; two more
-			x := rune(t.data[j]) - '0'
-			if x < 0 || x > 7 {
-				return 0, ErrorUnexpected.New(t.pos)
-			}
-			v = (v << 3) | x
-		}
-		t.data = t.data[2:]
-		if v > 255 {
-			return 0, ErrorUnexpected.New(t.pos)
+		if err := t.skipNumOct(rune(c) - '0'); err != nil {
+			return 0, err
 		}
 		return 4, nil
 	case '\'':
@@ -264,6 +239,55 @@ func (t *lexer) skipChar() (int, error) {
 	default:
 		return 0, ErrorUnexpected.New(t.pos)
 	}
+}
+
+func (t *lexer) skipNumHex(c byte) (int, error) {
+	n := 0
+	switch c {
+	case 'x':
+		n = 2
+	case 'u':
+		n = 4
+	case 'U':
+		n = 8
+	}
+	var v rune
+	if len(t.data) < n {
+		return 0, ErrorUnexpected.New(t.pos)
+	}
+	for j := 0; j < n; j++ {
+		x, ok := t.unhex(t.data[j])
+		if !ok {
+			return 0, ErrorUnexpected.New(t.pos)
+		}
+		v = v<<4 | x
+	}
+	t.data = t.data[n:]
+	if c == 'x' {
+		return 2 + n, nil
+	}
+	if !utf8.ValidRune(v) {
+		return 0, ErrorRune.New(t.pos)
+	}
+	return n + 2, nil
+}
+
+func (t *lexer) skipNumOct(v rune) error {
+	if len(t.data) < 2 {
+		return ErrorUnexpected.New(t.pos)
+	}
+	for j := 0; j < 2; j++ { // one digit already; two more
+		x := rune(t.data[j]) - '0'
+		if x < 0 || x > 7 {
+			return ErrorUnexpected.New(t.pos)
+		}
+		v = (v << 3) | x
+	}
+	t.data = t.data[2:]
+	if v > 255 {
+		return ErrorUnexpected.New(t.pos)
+	}
+	return nil
 }
 
 func (t *lexer) unhex(b byte) (v rune, ok bool) {

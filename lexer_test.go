@@ -15,7 +15,7 @@ func TestLexer(t *testing.T) {
 }
 
 func (t *LexerSuite) TestNextTokenOK() {
-	testCase := `   [  {  ]  }  true  false 123 12 1 -123 -12 -1 123.5 -123.56  :  "abd" "☺" "\xFF" "\377" "\u1234" "\U00010111" "\U0001011111" "\a\b\f\n\r\t\v\\\"" "\a"  ,  `
+	testCase := `   [  {  ]  }  true  false 123 12 1 -123 -12 -1 123.5 -123.56  :  "abd" "☺" "\xFF" "\377" "\u1234" "\U00010111" "\U0001011111" "\a\b\f\n\r\t\v\\\"" "\a"  ,  123{  `
 	l := newLexer([]byte(testCase))
 	check := []struct {
 		pos     int
@@ -36,7 +36,7 @@ func (t *LexerSuite) TestNextTokenOK() {
 		{pos: 41, bytePos: 41, typ: Int, value: []byte("-12")},
 		{pos: 45, bytePos: 45, typ: Int, value: []byte("-1")},
 		{pos: 48, bytePos: 48, typ: Float, value: []byte("123.5")},
-		{pos: 54, bytePos: 54, typ: Float, value: []byte("-123,56")},
+		{pos: 54, bytePos: 54, typ: Float, value: []byte("-123.56")},
 		{pos: 63, bytePos: 63, typ: colon},
 		{pos: 66, bytePos: 66, typ: String, value: []byte(`"abd"`)},
 		{pos: 72, bytePos: 72, typ: String, value: []byte(`"☺"`)},
@@ -48,6 +48,8 @@ func (t *LexerSuite) TestNextTokenOK() {
 		{pos: 127, bytePos: 129, typ: String, value: []byte(`"\a\b\f\n\r\t\v\\\""`)},
 		{pos: 148, bytePos: 150, typ: String, value: []byte(`"\a"`)},
 		{pos: 154, bytePos: 156, typ: comma},
+		{pos: 157, bytePos: 159, typ: Int, value: []byte("123")},
+		{pos: 160, bytePos: 162, typ: openCurve},
 	}
 	for i := 0; i < len(check); i++ {
 		lex, _, err := l.nextToken()

@@ -126,14 +126,9 @@ func parseObject(lex *lexer, before []byte) (LexemeType, []byte, error) {
 
 func skipObjectFields(lex *lexer, before []byte) (LexemeType, []byte, error) {
 	for {
-		lxm, data, err := lex.nextToken()
-		if err != nil {
-			return Err, nil, err
-		}
-		if lxm.typ == closeCurve {
-			return Object, before[:len(before)-len(data)+1], nil
-		} else if lxm.typ != comma {
-			return Err, nil, ErrorUnexpectedLexeme.New(lxm.pos)
+		typ, data, err := checkLexeme(lex, before, closeCurve, Object, Error{})
+		if typ != nothing {
+			return typ, data, err
 		}
 
 		if err := skipLexeme(lex, String); err != nil {
@@ -149,6 +144,22 @@ func skipObjectFields(lex *lexer, before []byte) (LexemeType, []byte, error) {
 			return Err, nil, err
 		}
 	}
+}
+
+func checkLexeme(lex *lexer, before []byte, closeLexCheck, closeLexRet LexemeType, closeError Error) (LexemeType, []byte, error) {
+	lxm, data, err := lex.nextToken()
+	if err != nil {
+		return Err, nil, err
+	}
+	if lxm.typ == closeLexCheck {
+		if closeError.err != nil {
+			return Err, nil, closeError.New(lxm.pos)
+		}
+		return closeLexRet, before[:len(before)-len(data)+1], nil
+	} else if lxm.typ != comma {
+		return Err, nil, ErrorUnexpectedLexeme.New(lxm.pos)
+	}
+	return nothing, before, nil
 }
 
 func skipLexeme(lex *lexer, typ LexemeType) error {
@@ -176,6 +187,11 @@ func parseArray(lex *lexer, before []byte) (LexemeType, []byte, error) {
 		return Err, nil, err
 	}
 	for {
+		typ, data, err := checkLexeme(lex, before, closeBracket, Array, Error{})
+		if typ != nothing {
+			return typ, data, err
+		}
+
 		lxm, data, err := lex.nextToken()
 		if err != nil {
 			return Err, nil, err
@@ -236,20 +252,15 @@ func skipPathPart(lex *lexer, path []byte) error {
 
 func skipPathPartFields(lex *lexer, path []byte) error {
 	for {
+		typ, _, err := checkLexeme(lex, nil, closeCurve, Err, ErrorWrongPath)
+		if typ != nothing {
+			return err
+		}
+
 		lxm, _, err := lex.nextToken()
 		if err != nil {
 			return err
-		} else if lxm.typ == closeCurve {
-			return ErrorWrongPath.New(lxm.pos)
-		} else if lxm.typ != comma {
-			return ErrorUnexpectedLexeme.New(lxm.pos)
-		}
-
-		lxm, _, err = lex.nextToken()
-		if err != nil {
-			return err
-		}
-		if lxm.typ != String {
+		} else if lxm.typ != String {
 			return ErrorUnexpectedLexeme.New(lxm.pos)
 		}
 		//TODO replace Unquote

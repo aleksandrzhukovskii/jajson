@@ -3,7 +3,8 @@ package jajson
 type LexemeType uint8
 
 const (
-	openCurve LexemeType = iota
+	nothing LexemeType = iota
+	openCurve
 	closeCurve
 	openBracket
 	closeBracket
