@@ -192,16 +192,6 @@ func parseArray(lex *lexer, before []byte) (LexemeType, []byte, error) {
 			return typ, data, err
 		}
 
-		lxm, data, err := lex.nextToken()
-		if err != nil {
-			return Err, nil, err
-		}
-		if lxm.typ == closeBracket {
-			return Array, before[:len(before)-len(data)+1], nil
-		} else if lxm.typ != comma {
-			return Err, nil, ErrorUnexpectedLexeme.New(lxm.pos)
-		}
-
 		if _, _, err = parseValue(lex); err != nil {
 			return Err, nil, err
 		}
