@@ -83,79 +83,83 @@ func (t *ParserSuite) TestParseValues() {
 }
 
 func (t *ParserSuite) TestParseInt() {
-	str := []byte("123")
-	{
-		val, err := jajson.GetInt[int](str)
-		t.NoError(err)
-		t.Equal(123, val)
-	}
+	strs := [][]byte{[]byte("123"), []byte(`"123"`)}
+	for _, str := range strs {
+		{
+			val, err := jajson.GetInt[int](str)
+			t.NoError(err)
+			t.Equal(123, val)
+		}
 
-	{
-		val, err := jajson.GetInt[int8](str)
-		t.NoError(err)
-		t.Equal(int8(123), val)
-	}
+		{
+			val, err := jajson.GetInt[int8](str)
+			t.NoError(err)
+			t.Equal(int8(123), val)
+		}
 
-	{
-		val, err := jajson.GetInt[int16](str)
-		t.NoError(err)
-		t.Equal(int16(123), val)
-	}
+		{
+			val, err := jajson.GetInt[int16](str)
+			t.NoError(err)
+			t.Equal(int16(123), val)
+		}
 
-	{
-		val, err := jajson.GetInt[int32](str)
-		t.NoError(err)
-		t.Equal(int32(123), val)
-	}
+		{
+			val, err := jajson.GetInt[int32](str)
+			t.NoError(err)
+			t.Equal(int32(123), val)
+		}
 
-	{
-		val, err := jajson.GetInt[int64](str)
-		t.NoError(err)
-		t.Equal(int64(123), val)
-	}
+		{
+			val, err := jajson.GetInt[int64](str)
+			t.NoError(err)
+			t.Equal(int64(123), val)
+		}
 
-	{
-		val, err := jajson.GetUInt[uint](str)
-		t.NoError(err)
-		t.Equal(uint(123), val)
-	}
+		{
+			val, err := jajson.GetUInt[uint](str)
+			t.NoError(err)
+			t.Equal(uint(123), val)
+		}
 
-	{
-		val, err := jajson.GetUInt[uint8](str)
-		t.NoError(err)
-		t.Equal(uint8(123), val)
-	}
+		{
+			val, err := jajson.GetUInt[uint8](str)
+			t.NoError(err)
+			t.Equal(uint8(123), val)
+		}
 
-	{
-		val, err := jajson.GetUInt[uint16](str)
-		t.NoError(err)
-		t.Equal(uint16(123), val)
-	}
+		{
+			val, err := jajson.GetUInt[uint16](str)
+			t.NoError(err)
+			t.Equal(uint16(123), val)
+		}
 
-	{
-		val, err := jajson.GetUInt[uint32](str)
-		t.NoError(err)
-		t.Equal(uint32(123), val)
-	}
+		{
+			val, err := jajson.GetUInt[uint32](str)
+			t.NoError(err)
+			t.Equal(uint32(123), val)
+		}
 
-	{
-		val, err := jajson.GetUInt[uint64](str)
-		t.NoError(err)
-		t.Equal(uint64(123), val)
+		{
+			val, err := jajson.GetUInt[uint64](str)
+			t.NoError(err)
+			t.Equal(uint64(123), val)
+		}
 	}
 }
 
 func (t *ParserSuite) TestParseFloat() {
-	str := []byte("123.123")
-	{
-		val, err := jajson.GetFloat[float32](str)
-		t.NoError(err)
-		t.Equal(float32(123.123), val)
-	}
-	{
-		val, err := jajson.GetFloat[float64](str)
-		t.NoError(err)
-		t.Equal(123.123, val)
+	strs := [][]byte{[]byte("123.123"), []byte(`"123.123"`)}
+	for _, str := range strs {
+		{
+			val, err := jajson.GetFloat[float32](str)
+			t.NoError(err)
+			t.Equal(float32(123.123), val)
+		}
+		{
+			val, err := jajson.GetFloat[float64](str)
+			t.NoError(err)
+			t.Equal(123.123, val)
+		}
 	}
 }
 

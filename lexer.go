@@ -130,14 +130,7 @@ func (t *lexer) skipNum(zeroCritical bool) (int, bool, error) {
 	ret := 0
 	float := false
 	point := false
-	for {
-		if len(t.data) == 0 {
-			if ret == 0 && zeroCritical {
-				return 0, false, ErrorUnexpected.New(t.pos)
-			}
-			return ret, float, nil
-		}
-
+	for len(t.data) != 0 {
 		size, r, err := t.skipNumDecodeRune(zeroCritical, point, ret)
 		if r == utf8.RuneError {
 			if err == nil {
@@ -156,6 +149,10 @@ func (t *lexer) skipNum(zeroCritical bool) (int, bool, error) {
 		t.data = t.data[size:]
 		ret++
 	}
+	if ret == 0 && zeroCritical {
+		return 0, false, ErrorUnexpected.New(t.pos)
+	}
+	return ret, float, nil
 }
 
 func (t *lexer) skipNumDecodeRune(zeroCritical, point bool, ret int) (int, rune, error) {
